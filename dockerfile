@@ -1,7 +1,8 @@
-FROM node:18-alpine as node
+FROM node:20-alpine as node
 
 WORKDIR /app
-# Installs latest Chromium (92) package.
+
+# Install Chromium and dependencies
 RUN apk add --no-cache \
       chromium \
       nss \
@@ -12,25 +13,29 @@ RUN apk add --no-cache \
       nodejs \
       yarn
 
-# Tell Puppeteer to skip installing Chrome. We'll be using the installed package.
+# Skip Chromium download and specify the executable path
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
-# Puppeteer v10.0.0 works with Chromium 92.
+# Copy application files and install dependencies
 COPY . .
-RUN npm install puppeteer@10.0.0
+RUN npm install puppeteer@23.1.1 && npm install
 
-# Add user so we don't need --no-sandbox.
+# Build the application
+RUN npm run build
+
+# Add non-privileged user and set permissions
 RUN addgroup -S pptruser && adduser -S -G pptruser pptruser \
     && mkdir -p /home/pptruser/Downloads /app \
     && chown -R pptruser:pptruser /home/pptruser \
     && chown -R pptruser:pptruser /app
 
-# Run everything after as non-privileged user.
+# Switch to non-privileged user
 USER pptruser
 
-RUN npm install
-RUN npm run build
+# Set environment variables
 ARG PUBLIC_URL
 ARG PORT
+
+# Start the application
 CMD ["npm", "start"]
